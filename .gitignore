@@ -18,6 +18,9 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# local env files
+.env*.local
+
 # Metro
 .metro-health-check*
 
@@ -41,3 +44,5 @@ app-example
 # generated native folders
 /ios
 /android
+# Backup of nested repo
+controlo-finaceiro/.git.backup/
