@@ -25,7 +25,7 @@ export default function Index() {
     );
   }
 
-  if (!tokenLogeded) {
+  if (tokenLogeded) {
     return <Redirect href="/(stack)/home" />;
   }
 

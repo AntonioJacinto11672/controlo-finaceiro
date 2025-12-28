@@ -26,7 +26,7 @@ const LoginScreen = () => {
   }
 
   return (
-    <View className='flex-1 bg-white dark:bg-black' style={{ /* backgroundColor: "#00665e" */ }}>
+    <View className='flex-1 bg-[#202024] dark:bg-black' style={{ /* backgroundColor: "#00665e" */ }}>
       <SafeAreaView className='flex'>
         <View className='flex-row justify-start'>
           {/* <TouchableOpacity
@@ -46,14 +46,14 @@ const LoginScreen = () => {
         </View>
       </SafeAreaView>
 
-      <View className='flex-1 bg-white dark:bg-black px-8 pt-8'
+      <View className='flex-1 bg-[#29292E] dark:bg-black px-8 pt-8'
         style={{
           borderTopLeftRadius: 50,
           borderTopRightRadius: 50
         }}
       >
         <View className='form space-y-2'>
-          <Text className='text-gray-700 ml-4 mb-2 dark:text-gray-400'>Email Address </Text>
+          <Text className='text-white ml-4 mb-2 dark:text-gray-400'>Email Address </Text>
           <Controller
             control={control}
             rules={{
@@ -65,7 +65,7 @@ const LoginScreen = () => {
 
             }}
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput className={`p-4  bg-gray-100 text-gray-700 rounded-2xl  ${errors.email ? ' text-gray-100 outline outline-red-500' : ''}`}
+              <TextInput className={`p-4  bg-[#121214] text-gray-700 rounded-2xl  ${errors.email ? ' text-gray-100 outline outline-red-500' : ''}`}
                 placeholder='Enter email' keyboardType='email-address'
                 onBlur={onBlur}
                 onChangeText={onChange}
@@ -76,7 +76,7 @@ const LoginScreen = () => {
           />
           {errors.email && <Text className='text-red-500 text-small ml-2 mb-5'> {errors.email.message} </Text>}
 
-          <Text className='text-gray-700 ml-4 mb-2 dark:text-gray-400'>Password </Text>
+          <Text className='text-white ml-4 mb-2 dark:text-gray-400'>Password </Text>
           <Controller
             control={control}
             rules={{
@@ -84,7 +84,7 @@ const LoginScreen = () => {
               
             }}
             render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput className={`p-4  bg-gray-100 text-gray-700 rounded-2xl   ${errors.password ? ' text-gray-100 outline outline-red-500' : ''}`}
+              <TextInput className={`p-4  bg-[#121214] text-gray-700 rounded-2xl   ${errors.password ? ' text-gray-100 outline outline-red-500' : ''}`}
                 placeholder='Enter password'
                 secureTextEntry
                 onBlur={onBlur}
