@@ -7,11 +7,12 @@ import Highliht from '@/components/Highliht';
 import IcomeExpenseCard from '@/components/IcomeExpenseCard';
 import ListEmpity from '@/components/ListEmpity';
 import ActivityService from '@/storage/activity.service';
-import { useRoute } from '@react-navigation/native';
+import EspecificActivityService from '@/storage/especificactivity.service';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
 import { Link, useRouter } from 'expo-router';
 import { ArrowRightIcon, EyeIcon, FileTextIcon } from 'phosphor-react-native';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, FlatList, Modal, PanResponder, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Animated, FlatList, Modal, PanResponder, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { EyeSlashIcon } from 'react-native-heroicons/solid';
 
 type RouteParams = {
@@ -74,6 +75,46 @@ const Activity = () => {
     setActivity(activity);
   }
 
+  async function fetchActivities() {
+    try {
+
+      console.log("Chamou a função")
+      // Implement fetching activities logic here
+      const activityService = new EspecificActivityService();
+      const activities = await activityService.getEspecificActivityById(nameActivity);
+      //console.log("Atividade comes", activities);
+      setActivities(activities || []);
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  //Remover actividade especifica
+  const handleRemoveEspecificActivity = async (id: string) => {
+    // Implement remove activity logic here
+    try {
+      console.log("Removendo atividade com id:", id);
+      const especificActivityService = new EspecificActivityService();
+      await especificActivityService.removeEspecificActivity(nameActivity, id);
+
+      Alert.alert("Actividade", "Atividade removida com sucesso!");
+      await fetchActivities();
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
+  const handleRemoveActivity = async () => {
+    // Implement remove activity logic here
+    try {
+      const activityService = new ActivityService();
+      await activityService.removeActivity(nameActivity);
+      Alert.alert("Actividade", "Atividade removida com sucesso!");
+      router.push('/');
+    } catch (error) {
+      console.log(error);
+    }
+  }
   useEffect(() => {
     //carregar atividades
 
@@ -87,6 +128,9 @@ const Activity = () => {
     }
   }, [modalVisible]);
 
+  useFocusEffect(React.useCallback(() => {
+    fetchActivities()
+  }, []))
   return (
     <Container>
       <Header showBackButton />
@@ -123,19 +167,19 @@ const Activity = () => {
         <Text style={{ fontFamily: 'Roboto_700Bold', fontSize: 14, color: "#C4C4CC" }} >0</Text>
       </View>
       <FlatList
-        data={codata}
+        data={activities}
         keyExtractor={item => item.name}
-        renderItem={({ item }) => <IcomeExpenseCard name={item.name} value={item.value} onRemove={() => { () => { } }}
-
+        renderItem={({ item }) => <IcomeExpenseCard name={item.name} value={item.value} onRemove={() => handleRemoveEspecificActivity(item.id)}
         />}
         ListEmptyComponent={() => <ListEmpity message="Não há receitas nem despesas nessa actividade" />}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           { paddingBottom: 100 },
-          codata.length === 0 && { flex: 1 }
+          activities.length === 0 && { flex: 1 }
         ]}
       />
-      <Button title="Remover Turma" type="SECONDARY" onPress={() => { }} />
+      <Button title="Remover Turma" type="SECONDARY" onPress={() => { handleRemoveActivity() }} />
+
       <Modal
         visible={modalVisible}
         animationType="fade"

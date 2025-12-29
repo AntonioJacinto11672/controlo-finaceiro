@@ -16,7 +16,7 @@ const IcomeExpenseCard = ({ name, value, onRemove }: Props) => {
                 <Text className=' text-base text-[#C4C4CC] ' style={{ fontFamily: 'Roboto_400Regular' }}>{name}</Text>
                 <Text className="text-[#C4C4CC]  text-sm ">Valor: {value}</Text>
             </View>
-            <ButtonIcon icon="close" type="SECONDARY" onPress={() => console.log("Delete Activity")} />
+            <ButtonIcon icon="close" type="SECONDARY" onPress={onRemove} />
         </View>
     );
 }

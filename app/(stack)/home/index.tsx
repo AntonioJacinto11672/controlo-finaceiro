@@ -6,7 +6,7 @@ import Header from '@/components/Header';
 import Highliht from '@/components/Highliht';
 import ListEmpity from '@/components/ListEmpity';
 import ActivityService from '@/storage/activity.service';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, FlatList } from 'react-native';
@@ -56,6 +56,9 @@ const HomeScreen = () => {
     fetchGroups();
   }, []);
 
+  useFocusEffect(React.useCallback(() => {
+    fetchGroups()
+  }, []))
   return (
     <Container>
       <Header />

@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Highliht from '@/components/Highliht';
 import Input from '@/components/Input';
 import ActivityService from '@/storage/activity.service';
+import EspecificActivityService from '@/storage/especificactivity.service';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRoute } from '@react-navigation/native';
 import { router } from 'expo-router';
@@ -60,6 +61,22 @@ const createActivity = () => {
         const result = await actvityModel.addActivity(newActivity);
       } else {
         console.log("Criando uma nova receita ou despesas");
+        const especificActivityModel = new EspecificActivityService();
+        const newActivity = {
+          id: id,
+          idActivity: subtitulo,
+          name: data.name,
+          value: Number(data.value),
+          dataActivity: data.dataActivity,
+          type: titulo.toLowerCase() === 'receitas' ? 'receitas' : 'despesas',
+          createAt: new Date(),
+        };
+
+        console.log("Id da actividade", subtitulo);
+        const result = await especificActivityModel.addEspecificActivity(newActivity);
+        Alert.alert("Actividade", "Atividade criada com sucesso!");
+        router.back();
+        return;
       }
 
       //console.log(data);
@@ -90,7 +107,7 @@ const createActivity = () => {
       <FileTextIcon color="#00875F" size={56} style={{ alignSelf: "center" }} />
       <Highliht
         title={`Nova ${titulo}` || "Nova Actividade"}
-        subTitle={`Adicionara ${titulo} em ${subtitulo}` || "Cria uma actividade para controlar seus gastos"}
+        subTitle={`Adicionara ${titulo} para controlar os gastos` || "Cria uma actividade para controlar seus gastos"}
       />
 
       <Controller

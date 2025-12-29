@@ -1,6 +1,6 @@
 import { AppError } from "@/utils/AppError";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ACTIVITIES_COLLECTION } from "./storageConfig";
+import { ACTIVITIES_COLLECTION, ESPECIFIC_ACTIVITY_COLLECTION } from "./storageConfig";
 
 class ActivityService {
     constructor() {
@@ -48,6 +48,20 @@ class ActivityService {
             throw error;
         }
     }
+    async removeActivity(id: string) {
+        try {
+            const storedGroups = await this.getAllActivities();
+            const filteredGroups = storedGroups.filter(item => item.id !== id);
+
+            const storage = JSON.stringify(filteredGroups);
+            await AsyncStorage.setItem(ACTIVITIES_COLLECTION, storage);
+            await AsyncStorage.removeItem(`${ESPECIFIC_ACTIVITY_COLLECTION}-${id}`);
+        } catch (error) {
+            throw error;
+        }
+    }
 }
+
+
 
 export default ActivityService;
