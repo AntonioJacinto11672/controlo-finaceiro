@@ -25,9 +25,9 @@ export default function Index() {
     );
   }
 
-  if (tokenLogeded) {
+  if (!tokenLogeded) {
     return <Redirect href="/(stack)/home" />;
   }
 
-  return <Redirect href="/(auth)/login" />;
+  return <Redirect href="/(stack)/home" />;
 }

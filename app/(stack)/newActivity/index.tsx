@@ -4,10 +4,15 @@ import Container from '@/components/Container';
 import Header from '@/components/Header';
 import Highliht from '@/components/Highliht';
 import Input from '@/components/Input';
+import ActivityService from '@/storage/activity.service';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRoute } from '@react-navigation/native';
+import { router } from 'expo-router';
+import { nanoid } from 'nanoid/non-secure';
 import { FileTextIcon } from 'phosphor-react-native';
 import React from 'react';
-
+import { Controller, useForm } from 'react-hook-form';
+import { Alert, Keyboard, Platform, Pressable, Text } from 'react-native';
 const data = [
   { id: '1', title: 'Atividade 1' },
   { id: '2', title: 'Atividade 2' },
@@ -19,22 +24,64 @@ type RouteParams = {
 }
 
 
+
 const createActivity = () => {
+
   const route = useRoute();
   const [titulo, setTitulo] = React.useState('');
   const [subtitulo, setSubtitulo] = React.useState('');
   const { value } = route.params as RouteParams;
+  const [showPicker, setShowPicker] = React.useState(false)
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      name: "",
+      value: "",
+      dataActivity: new Date(),
+    },
+  })
 
- React.useEffect(() => {
+  const onSubmit = async (data: any) => {
+    try {
+      const id = nanoid();
+      if (value.includes("Actividade")) {
+        const actvityModel = new ActivityService();
+        const newActivity = {
+          id: id,
+          name: data.name,
+          value: Number(data.value),
+          dataActivity: data.dataActivity,
+          createAt: new Date(),
+        };
+
+        const result = await actvityModel.addActivity(newActivity);
+      } else {
+        console.log("Criando uma nova receita ou despesas");
+      }
+
+      //console.log(data);
+      Alert.alert("Actividade", "Atividade criada com sucesso!");
+      router.back();
+
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Actividade", "Não foi possível carregar as A")
+    }
+  }
+
+  React.useEffect(() => {
     const partes = value.split("_");
-    const tituloExtraido = partes.shift();  
+    const tituloExtraido = partes.shift();
     const subtituloExtraido = partes.join("_");
 
     setTitulo(tituloExtraido || '');
     setSubtitulo(subtituloExtraido || '');
   }, [value]);
 
-  
+
 
 
   return (
@@ -43,20 +90,91 @@ const createActivity = () => {
       <FileTextIcon color="#00875F" size={56} style={{ alignSelf: "center" }} />
       <Highliht
         title={`Nova ${titulo}` || "Nova Actividade"}
-        subTitle={ `Adicionara ${titulo} em ${subtitulo}` || "Cria uma actividade para controlar seus gastos"}
+        subTitle={`Adicionara ${titulo} em ${subtitulo}` || "Cria uma actividade para controlar seus gastos"}
       />
 
-      <Input
-        style={{ marginTop: 32, marginBottom: 16 }}
-        placeholder='Nome da Actividade'
+      <Controller
+        control={control}
+        rules={{
+          required: "campo obrigatório",
+        }}
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input className={`p-4  bg-[#121214] text-gray-700 rounded-2xl  ${errors.name ? ' text-gray-100 outline outline-red-500' : ''}`}
+            placeholder='Enter name'
+            onBlur={onBlur}
+            onChangeText={onChange}
+            value={value}
+            style={{ marginTop: 32, marginBottom: 16 }}
+          />
+        )}
+        name="name"
       />
+      {errors.name && <Text className='text-red-500 text-small ml-2 mb-5'> {errors.name.message} </Text>}
 
-      <Input
-        style={{ marginTop: 32, marginBottom: 16 }}
-        placeholder='Valor da Actividade'
+      <Controller
+        control={control}
+        rules={{
+          required: "campo obrigatório",
+        }}
+        render={({ field: { onChange, onBlur, value } }) => (
+          <Input className={`p-4  bg-[#121214] text-gray-700 rounded-2xl  ${errors.value ? ' text-gray-100 outline outline-red-500' : ''}`}
+            placeholder='Enter value'
+            keyboardType='numeric'
+            onBlur={onBlur}
+            onChangeText={onChange}
+            value={value}
+            style={{ marginTop: 32, marginBottom: 16 }}
+          />
+        )}
+        name="value"
       />
+      {errors.value && <Text className='text-red-500 text-small ml-2 mb-5'> {errors.value.message} </Text>}
 
-      <Button title="Adicionar Atividade" />
+      {/* DATE PICKER */}
+      <Controller
+        control={control}
+        name="dataActivity"
+        render={({ field: { value, onChange } }) => (
+          <>
+            <Pressable
+              onPress={() => {
+                Keyboard.dismiss();
+                setShowPicker(true);
+              }}
+              style={{
+                backgroundColor: '#121214',
+                borderWidth: 1,
+                borderColor: '#121214',
+                borderRadius: 6,
+                padding: 14,
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ color: '#FFFFFF', fontSize: 16, fontFamily: 'Roboto_400Regular' }}>
+                {value
+                  ? value.toLocaleDateString('pt-PT')
+                  : 'Selecionar data'}
+              </Text>
+            </Pressable>
+
+            {showPicker && (
+              <DateTimePicker
+                value={value || new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(_, selectedDate) => {
+                  setShowPicker(false);
+                  Keyboard.dismiss();
+                  if (selectedDate) {
+                    onChange(selectedDate);
+                  }
+                }}
+              />
+            )}
+          </>
+        )}
+      />
+      <Button title="Adicionar Atividade" onPress={handleSubmit(onSubmit)} />
 
     </Container>
   );

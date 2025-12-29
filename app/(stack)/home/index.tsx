@@ -5,10 +5,11 @@ import Container from '@/components/Container';
 import Header from '@/components/Header';
 import Highliht from '@/components/Highliht';
 import ListEmpity from '@/components/ListEmpity';
+import ActivityService from '@/storage/activity.service';
 import { useNavigation } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { FlatList } from 'react-native';
+import { Alert, FlatList } from 'react-native';
 
 
 const data = [
@@ -19,7 +20,7 @@ const data = [
 
 const HomeScreen = () => {
   const [isLoading, setIsLoading] = useState(true);
-  const [activity, setActivity] = useState<string[]>([]);
+  const [activity, setActivity] = useState<ActivityTypeDTO[]>([]);
   const router = useRouter();
   const navigation = useNavigation()
 
@@ -37,6 +38,24 @@ const HomeScreen = () => {
     })
   }
 
+  async function fetchGroups() {
+    try {
+      setIsLoading(true);
+      const actvityModel = new ActivityService();
+      const data = await actvityModel.getAllActivities();
+      setActivity(data);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Turmas", "Não foi possível carregar as turmas")
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    fetchGroups();
+  }, []);
+
   return (
     <Container>
       <Header />
@@ -46,14 +65,14 @@ const HomeScreen = () => {
       />
 
       <FlatList
-        data={data}
+        data={activity}
         keyExtractor={item => item.id}
-        contentContainerStyle={data.length === 0 && { flex: 1 }}
-        renderItem={({ item }) => <ActivityCard key={item.id} Title={item.title} onPress={() => handleOpenActivity(item.title)} />}
+        contentContainerStyle={activity.length === 0 && { flex: 1 }}
+        renderItem={({ item }) => <ActivityCard key={item.id} Title={item.name} onPress={() => handleOpenActivity(item.id)} />}
         ListEmptyComponent={() => <ListEmpity message="Nenhuma atividade encontrada" />}
         showsVerticalScrollIndicator={false}
       />
-      <Button title="Adicionar Atividade" onPress={() =>  addNewActivity('Actividade')} />
+      <Button title="Adicionar Atividade" onPress={() => addNewActivity('Actividade')} />
     </Container>
   );
 }
