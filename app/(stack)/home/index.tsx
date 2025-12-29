@@ -22,13 +22,21 @@ const HomeScreen = () => {
   const [activity, setActivity] = useState<string[]>([]);
   const router = useRouter();
   const navigation = useNavigation()
-  
+
   async function handleOpenActivity(nameActivity: string) {
     router.push({
       pathname: '/(stack)/activity',
       params: { nameActivity }
     });
   }
+
+  async function addNewActivity(value: string) {
+    router.push({
+      pathname: '/(stack)/newActivity',
+      params: { value }
+    })
+  }
+
   return (
     <Container>
       <Header />
@@ -45,7 +53,7 @@ const HomeScreen = () => {
         ListEmptyComponent={() => <ListEmpity message="Nenhuma atividade encontrada" />}
         showsVerticalScrollIndicator={false}
       />
-      <Button title="Adicionar Atividade" onPress={() => router.push("/(stack)/newActivity")} />
+      <Button title="Adicionar Atividade" onPress={() =>  addNewActivity('Actividade')} />
     </Container>
   );
 }
