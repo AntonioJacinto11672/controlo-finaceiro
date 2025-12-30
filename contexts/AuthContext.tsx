@@ -1,81 +1,143 @@
+import { AUTH_COLLECTION } from '@/storage/storageConfig';
 import { UserType } from '@/utils/userType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { createContext, useContext, useEffect, useState } from 'react';
 
+
 interface AuthContextType {
   user: UserType;
   tokenLogeded: string;
-  login: (userData: UserType, token: string) => Promise<void>;
-  logout: () => void;
+  isRegistered: boolean;
+  register: (userData: UserType, pin: string) => Promise<void>;
+  loginWithPin: (pin: string) => Promise<boolean>;
+  recoverPin: (newPin: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+const INITIAL_USER: UserType = {
+  id: '',
+  email: '',
+  userName: '',
+  phoneNumber: '',
+  roleId: '',
+  password: ''
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const [tokenLogeded, setTokenLogeded] = useState<string>('');
-  const [user, setUser] = useState<UserType>({
-    id: '',
-    email: '',
-    userName: '',
-    phoneNumber: '',
-    roleId: '',
-    password: ''
-  });
 
+  const [user, setUser] = useState<UserType>(INITIAL_USER);
+  const [tokenLogeded, setTokenLogeded] = useState('');
+  const [isRegistered, setIsRegistered] = useState(false);
+
+  // 🔄 Carregar dados ao iniciar app
   useEffect(() => {
     const loadAuthData = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem('user');
-        const storedToken = await AsyncStorage.getItem('token');
+        const storedUser = await AsyncStorage.getItem(
+          `${AUTH_COLLECTION}-user`
+        );
+        const storedToken = await AsyncStorage.getItem(
+          `${AUTH_COLLECTION}-token`
+        );
 
         if (storedUser) {
           setUser(JSON.parse(storedUser));
+          setIsRegistered(true);
         }
 
         if (storedToken) {
           setTokenLogeded(storedToken);
         }
       } catch (error) {
-        console.error('Erro ao carregar dados de autenticação:', error);
+        console.error('Erro ao carregar autenticação:', error);
       }
     };
 
     loadAuthData();
   }, []);
 
-  const login = async (userData: UserType, token: string) => {
+  // 📝 REGISTO ÚNICO (UMA VEZ POR DISPOSITIVO)
+  const register = async (userData: UserType, pin: string) => {
     try {
-      //Verificar se tem usuario  registado no localstorage
-      
-      console.log('User Info 2', userData);
+      const alreadyRegistered = await AsyncStorage.getItem(
+        `${AUTH_COLLECTION}-user`
+      );
 
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await AsyncStorage.setItem('token', token);
+      if (alreadyRegistered) {
+        throw new Error('Já existe um utilizador registado neste dispositivo');
+      }
+
+      if (!/^[0-9]{6}$/.test(pin)) {
+        throw new Error('O PIN deve conter exatamente 6 dígitos');
+      }
+
+      await AsyncStorage.multiSet([
+        [`${AUTH_COLLECTION}-user`, JSON.stringify(userData)],
+        [`${AUTH_COLLECTION}-pin`, pin]
+      ]);
 
       setUser(userData);
-      setTokenLogeded(token);
+      setIsRegistered(true);
+
+      router.replace('/(auth)/login');
     } catch (error) {
-      console.error('Erro ao salvar dados de login:', error);
+      console.error('Erro no registo:', error);
+      throw error;
     }
   };
 
+  // 🔑 LOGIN APENAS COM PIN (6 DÍGITOS)
+  const loginWithPin = async (pin: string) => {
+    try {
+      const storedPin = await AsyncStorage.getItem(
+        `${AUTH_COLLECTION}-pin`
+      );
+
+      if (storedPin !== pin) {
+        return false;
+      }
+
+      const token = Date.now().toString();
+
+      await AsyncStorage.setItem(
+        `${AUTH_COLLECTION}-token`,
+        token
+      );
+
+      setTokenLogeded(token);
+
+      router.replace('/(stack)/home');
+      return true;
+    } catch (error) {
+      console.error('Erro no login:', error);
+      return false;
+    }
+  };
+
+  // 🔄 RECUPERAÇÃO DE PIN
+  const recoverPin = async (newPin: string) => {
+    if (!/^[0-9]{6}$/.test(newPin)) {
+      throw new Error('O novo PIN deve conter exatamente 6 dígitos');
+    }
+
+    await AsyncStorage.setItem(
+      `${AUTH_COLLECTION}-pin`,
+      newPin
+    );
+  };
+
+  // 🚪 LOGOUT (não apaga registo)
   const logout = async () => {
     try {
-      setUser({
-        id: '',
-        email: '',
-        userName: '',
-        phoneNumber: '',
-        roleId: '',
-        password: ''
-      });
+      await AsyncStorage.removeItem(
+        `${AUTH_COLLECTION}-token`
+      );
+
       setTokenLogeded('');
-
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('token');
-
       router.replace('/(auth)/login');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
@@ -83,7 +145,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, tokenLogeded, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        tokenLogeded,
+        isRegistered,
+        register,
+        loginWithPin,
+        recoverPin,
+        logout
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

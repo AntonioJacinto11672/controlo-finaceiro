@@ -3,47 +3,57 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
-  Alert,
-  Image,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type LoginFormData = {
-  password: string; // PIN 6 dígitos
+type RecoverPinFormData = {
+  newPin: string;
 };
 
-const LoginScreen = () => {
+const RecoverPinScreen = () => {
   const router = useRouter();
-  const { loginWithPin, isRegistered } = useAuth();
+  const { recoverPin, isRegistered } = useAuth();
 
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>({
+  } = useForm<RecoverPinFormData>({
     defaultValues: {
-      password: '',
+      newPin: '',
     },
   });
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: RecoverPinFormData) => {
     if (!isRegistered) {
       Alert.alert(
         'Dispositivo não registado',
-        'Por favor, faça o registo primeiro.'
+        'É necessário registar um utilizador primeiro.'
       );
       router.replace('/(auth)/register');
       return;
     }
 
-    const success = await loginWithPin(data.password);
+    try {
+      await recoverPin(data.newPin);
 
-    if (!success) {
-      Alert.alert('Erro', 'PIN incorreto. Tente novamente.');
+      Alert.alert(
+        'Sucesso',
+        'PIN alterado com sucesso. Faça login com o novo PIN.'
+      );
+
+      router.replace('/(auth)/login');
+    } catch (error: any) {
+      Alert.alert(
+        'Erro',
+        error?.message || 'Não foi possível recuperar o PIN'
+      );
     }
   };
 
@@ -66,10 +76,14 @@ const LoginScreen = () => {
         }}
       >
         <View className="space-y-2">
-          {/* PIN */}
+          <Text className="text-gray-100 text-lg font-semibold text-center mb-4">
+            Recuperar PIN
+          </Text>
+
+          {/* Novo PIN */}
           <Controller
             control={control}
-            name="password"
+            name="newPin"
             rules={{
               required: 'Campo obrigatório',
               minLength: {
@@ -88,9 +102,9 @@ const LoginScreen = () => {
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 className={`p-4 bg-[#121214] rounded-2xl text-gray-100 ${
-                  errors.password ? 'outline outline-red-500' : ''
+                  errors.newPin ? 'outline outline-red-500' : ''
                 }`}
-                placeholder="PIN (6 dígitos)"
+                placeholder="Novo PIN (6 dígitos)"
                 placeholderTextColor="#7C7C8A"
                 keyboardType="numeric"
                 secureTextEntry
@@ -103,38 +117,30 @@ const LoginScreen = () => {
               />
             )}
           />
-          {errors.password && (
+          {errors.newPin && (
             <Text className="text-red-500 ml-2">
-              {errors.password.message}
+              {errors.newPin.message}
             </Text>
           )}
 
-          {/* Recuperar PIN */}
+          {/* Botão recuperar */}
           <TouchableOpacity
-            className="flex items-end mb-5"
-            onPress={() => {router.push('/(auth)/recover-pin/index')}}
-          >
-            <Text className="text-gray-400">Forgot PIN?</Text>
-          </TouchableOpacity>
-
-          {/* Login */}
-          <TouchableOpacity
-            className="py-3 bg-[#00665e] rounded-xl"
+            className="py-3 mt-6 bg-[#00665e] rounded-xl"
             onPress={handleSubmit(onSubmit)}
           >
             <Text className="font-bold text-center text-white">
-              Login
+              Atualizar PIN
             </Text>
           </TouchableOpacity>
         </View>
 
-        {/* Registo */}
+        {/* Voltar ao login */}
         <View className="flex-row justify-center mt-7">
           <TouchableOpacity
-            onPress={() => router.push('/(auth)/register')}
+            onPress={() => router.replace('/(auth)/login')}
           >
             <Text className="font-semibold text-[#00665e]">
-              Sign Up
+              Voltar ao Login
             </Text>
           </TouchableOpacity>
         </View>
@@ -143,4 +149,4 @@ const LoginScreen = () => {
   );
 };
 
-export default LoginScreen;
+export default RecoverPinScreen;

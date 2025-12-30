@@ -89,10 +89,10 @@ const createActivity = () => {
           return;
         }
 
-        if (((newActivity.value > correnteActivity.value))) {
+       /*  if ((newActivity.value > correnteActivity.value) && newActivity.type ==="receitas" ) {
           Alert.alert("Actividade", "O valor da atividade não pode ser maior que o valor da atividade principal!");
           return;
-        }
+        } */
 
 
         const result = await especificActivityModel.addEspecificActivity(newActivity);
