@@ -24,16 +24,30 @@ class ActivityService {
             console.log(activity);
             const storedGroup = await this.getAllActivities();
             const groupAlreadyExists = storedGroup.some(item => item.id === activity.id);
+            const groupAlreadyExistsName = storedGroup.some(item => item.name === activity.name);
+
+
             if (groupAlreadyExists) {
-                throw new AppError("Atividade já cadastrada");
+                throw new AppError("Error aoRegistar, tenta novamente");
             }
+            if (groupAlreadyExistsName) {
+                throw new AppError("Já tem actividade registada com esse nome, tenta alterar o nome");
+            }
+
+            const storedGroupByName = await this.getActivityByName(activity.name);
+            console.log(storedGroupByName);
+
+            if (storedGroupByName) {
+                throw new AppError("Já existe uma atividade com esse nome");
+            }
+
             const storage = JSON.stringify([...storedGroup, activity]);
             await AsyncStorage.setItem(ACTIVITIES_COLLECTION, storage);
 
             //console.log("Atividade adicionada com sucesso!");
 
         } catch (error) {
-
+            throw error;
         }
     }
 
@@ -41,6 +55,18 @@ class ActivityService {
         try {
             const storedGroup = await this.getAllActivities();
             const activity: ActivityTypeDTO | undefined = storedGroup.find(item => item.id === id);
+
+            return activity;
+        }
+        catch (error) {
+            throw error;
+        }
+    }
+
+    async getActivityByName(name: string) {
+        try {
+            const storedGroup = await this.getAllActivities();
+            const activity: ActivityTypeDTO | undefined = storedGroup.find(item => item.name.toLowerCase() === name.toLowerCase());
 
             return activity;
         }

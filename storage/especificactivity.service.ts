@@ -30,8 +30,9 @@ class EspecificActivityService {
                 const especificActivity: EspecificActivityTypeDTO[] = JSON.parse(storage);
                 return especificActivity;
             }
+            return [];
         } catch (error) {
-
+            throw error;
         }
     }
 
@@ -53,16 +54,21 @@ class EspecificActivityService {
             const storedEspecificActivity = await this.getEspecificActivityById(especificActivity.idActivity);
 
             const groupAlreadyExists = storedEspecificActivity.some(item => item.id === especificActivity.id);
-            const groupAlreadyExistsName = storedEspecificActivity.some(item => item.name === especificActivity.name);
+            
+            const groupAlreadyExistsName = storedEspecificActivity.some(item => item.name === especificActivity.name && item.type === especificActivity.type);
 
-            if (groupAlreadyExists || groupAlreadyExistsName) {
+            if (groupAlreadyExists) {
                 throw new AppError("Atividade já cadastrada");
             }
-            
+            if (groupAlreadyExistsName) {
+                throw new AppError("Já existe uma atividade com esse nome");
+            }
+
             const storage = JSON.stringify([...storedEspecificActivity, especificActivity]);
             await AsyncStorage.setItem(`${ESPECIFIC_ACTIVITY_COLLECTION}-${especificActivity.idActivity}`, storage);
+            return true
         } catch (error) {
-
+            throw error;
         }
     }
 

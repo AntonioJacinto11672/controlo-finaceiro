@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Highliht from '@/components/Highliht';
 import IcomeExpenseCard from '@/components/IcomeExpenseCard';
 import ListEmpity from '@/components/ListEmpity';
+import Loading from '@/components/Loanding';
 import ActivityService from '@/storage/activity.service';
 import EspecificActivityService from '@/storage/especificactivity.service';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
@@ -33,6 +34,8 @@ const Activity = () => {
   const { nameActivity } = route.params as RouteParams;
   const [modalVisible, setModalVisible] = useState(false)
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+
 
   const translateY = useRef(new Animated.Value(0)).current;
 
@@ -69,16 +72,23 @@ const Activity = () => {
   }
 
   async function fetchCurrentActivity() {
-    // Implement fetching current activity logic here
-    const activityService = new ActivityService();
-    const activity = await activityService.getActivityById(nameActivity);
-    setActivity(activity);
+    try {
+      setIsLoading(true)
+      // Implement fetching current activity logic here
+      const activityService = new ActivityService();
+      const activity = await activityService.getActivityById(nameActivity);
+      setActivity(activity);
+    } catch (error) {
+      console.log(error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   async function fetchActivities() {
     try {
 
-      console.log("Chamou a função")
+      setIsLoading(true);
       // Implement fetching activities logic here
       const activityService = new EspecificActivityService();
       const activities = await activityService.getEspecificActivityById(nameActivity);
@@ -86,6 +96,22 @@ const Activity = () => {
       setActivities(activities || []);
     } catch (error) {
       console.log(error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+  async function fetchActivityType() {
+    try {
+      setIsLoading(true);
+      // Implement fetching activities logic here
+      const activityService = new EspecificActivityService();
+      const activities = await activityService.getActivityByType(nameActivity, team.toLowerCase() as 'receitas' | 'despesas');
+      //console.log("Atividade comes", activities);
+      setActivities(activities || []);
+    } catch (error) {
+      console.log(error);
+    } finally {
+      setIsLoading(false);
     }
   }
 
@@ -93,32 +119,88 @@ const Activity = () => {
   const handleRemoveEspecificActivity = async (id: string) => {
     // Implement remove activity logic here
     try {
+      setIsLoading(true)
       console.log("Removendo atividade com id:", id);
       const especificActivityService = new EspecificActivityService();
       await especificActivityService.removeEspecificActivity(nameActivity, id);
 
       Alert.alert("Actividade", "Atividade removida com sucesso!");
       await fetchActivities();
+      await fetchActivityType()
     } catch (error) {
       console.log(error);
+    } finally {
+      setIsLoading(false)
     }
   }
 
   const handleRemoveActivity = async () => {
     // Implement remove activity logic here
     try {
+      setIsLoading(true)
       const activityService = new ActivityService();
       await activityService.removeActivity(nameActivity);
       Alert.alert("Actividade", "Atividade removida com sucesso!");
       router.push('/');
     } catch (error) {
       console.log(error);
+    } finally {
+      setIsLoading(false)
     }
   }
+
+  async function handleGroupRemove() {
+    try {
+      Alert.alert("Remover Actividade", `Deseja remover a Actividade ${activity?.name}?`, [
+        {
+          text: "Não",
+          style: "cancel"
+        },
+        {
+          text: "Sim",
+          onPress: async () => {
+            // Call the function to remove the group
+            await handleRemoveActivity();
+            // Navigate back or perform any other action after removal
+          }
+        }
+      ]);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Remover Turma", "Não foi possivél remover a turma")
+    }
+  }
+
+  async function handleActivityRemove(id: string) {
+    try {
+      Alert.alert("Remover Actividade", `Deseja remover esses pagamento?`, [
+        {
+          text: "Não",
+          style: "cancel"
+        },
+        {
+          text: "Sim",
+          onPress: async () => {
+            // Call the function to remove the group
+            await handleRemoveEspecificActivity(id);
+            // Navigate back or perform any other action after removal
+          }
+        }
+      ]);
+    } catch (error) {
+      console.log(error);
+      Alert.alert("Remover Turma", "Não foi possivél remover a turma")
+    }
+  }
+
   useEffect(() => {
     //carregar atividades
 
+
+
+    
     fetchCurrentActivity()
+    fetchActivityType()
   }, [])
 
   useEffect(() => {
@@ -129,57 +211,70 @@ const Activity = () => {
   }, [modalVisible]);
 
   useFocusEffect(React.useCallback(() => {
-    fetchActivities()
-  }, []))
+    fetchCurrentActivity();
+    fetchActivityType();
+  }, [team, nameActivity]))
+
+  useEffect(() => {
+    fetchActivityType()
+  }, [team])
   return (
     <Container>
-      <Header showBackButton />
-      <Highliht
-        title={activity ? activity.name : "Atividade"}
-        subTitle="Controle as suas actividades"
-      />
-
-      <View className='flex-row items-center justify-center gap-2'>
-        <TouchableOpacity onPress={() => setEyeOpen(!eyeOpen)}>
-          {
-            eyeOpen ? <EyeIcon size={24} color="#00B37E" /> : <EyeSlashIcon size={24} color="#7C7C8A" />
-          }
-        </TouchableOpacity>
-        <Text className='font-Roboto_700Bold text-white' >AKZ {eyeOpen ? 2000 : '***'},00</Text>
-      </View>
-      <TouchableOpacity className='flex-row gap-1 border border-[#095c4371] mt-2 p-2.5  rounded-md items-center justify-center  self-center '
-        onPress={() => setModalVisible(true)}
-      >
-        <FileTextIcon size={20} color="#095c4371" />
-        <Text className='text-white '>Ver Detalhes da Actividade</Text>
-      </TouchableOpacity>
 
 
-      <View className='w-full flex-row items-center mt-8 mx-0 mb-12'>
-        <FlatList
-          data={["Receitas", "Despesas"]}
-          keyExtractor={item => item}
-          renderItem={({ item }) => <Filter isActive={item === team} title={item}
-            onPress={() => setTeam(item)}
-          />}
-          horizontal
-        />
-        <Text style={{ fontFamily: 'Roboto_700Bold', fontSize: 14, color: "#C4C4CC" }} >0</Text>
-      </View>
-      <FlatList
-        data={activities}
-        keyExtractor={item => item.name}
-        renderItem={({ item }) => <IcomeExpenseCard name={item.name} value={item.value} onRemove={() => handleRemoveEspecificActivity(item.id)}
-        />}
-        ListEmptyComponent={() => <ListEmpity message="Não há receitas nem despesas nessa actividade" />}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[
-          { paddingBottom: 100 },
-          activities.length === 0 && { flex: 1 }
-        ]}
-      />
-      <Button title="Remover Turma" type="SECONDARY" onPress={() => { handleRemoveActivity() }} />
+      {
+        isLoading ?
+          <Loading /> :
+          <>
+            <Header showBackButton />
+            <Highliht
+              title={activity ? activity.name : "Atividade"}
+              subTitle="Controle as suas actividades"
+            />
+            <View className='flex-row items-center justify-center gap-2'>
+              <TouchableOpacity onPress={() => setEyeOpen(!eyeOpen)}>
+                {
+                  eyeOpen ? <EyeIcon size={24} color="#00B37E" /> : <EyeSlashIcon size={24} color="#7C7C8A" />
+                }
+              </TouchableOpacity>
+              <Text className='font-Roboto_700Bold text-white' >AKZ {eyeOpen ? 2000 : '***'},00</Text>
+            </View>
+            <TouchableOpacity className='flex-row gap-1 border border-[#095c4371] mt-2 p-2.5  rounded-md items-center justify-center  self-center '
+              onPress={() => setModalVisible(true)}
+            >
+              <FileTextIcon size={20} color="#095c4371" />
+              <Text className='text-white '>Ver Detalhes da Actividade</Text>
+            </TouchableOpacity>
 
+
+            <View className='w-full flex-row items-center mt-8 mx-0 mb-12'>
+              <FlatList
+                data={["Receitas", "Despesas"]}
+                keyExtractor={item => item}
+                renderItem={({ item }) => <Filter isActive={item === team} title={item}
+                  onPress={() => setTeam(item)}
+                />}
+                horizontal
+              />
+              <Text style={{ fontFamily: 'Roboto_700Bold', fontSize: 14, color: "#C4C4CC" }} >0</Text>
+            </View>
+            <FlatList
+              data={activities}
+              keyExtractor={item => item.name}
+              renderItem={({ item }) => <IcomeExpenseCard name={item.name} value={item.value} onRemove={() => handleActivityRemove(item.id)}
+              />}
+              ListEmptyComponent={() => <ListEmpity message="Não há receitas nem despesas nessa actividade" />}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[
+                { paddingBottom: 100 },
+                activities.length === 0 && { flex: 1 }
+              ]}
+            />
+            <Button title="Remover Actividade" type="SECONDARY" onPress={() => { handleGroupRemove() }} />
+
+          </>
+      }
+      {/* Modal */}
       <Modal
         visible={modalVisible}
         animationType="fade"

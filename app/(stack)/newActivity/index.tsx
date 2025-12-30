@@ -4,8 +4,10 @@ import Container from '@/components/Container';
 import Header from '@/components/Header';
 import Highliht from '@/components/Highliht';
 import Input from '@/components/Input';
+import Loading from '@/components/Loanding';
 import ActivityService from '@/storage/activity.service';
 import EspecificActivityService from '@/storage/especificactivity.service';
+import { AppError } from '@/utils/AppError';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRoute } from '@react-navigation/native';
 import { router } from 'expo-router';
@@ -33,6 +35,8 @@ const createActivity = () => {
   const [subtitulo, setSubtitulo] = React.useState('');
   const { value } = route.params as RouteParams;
   const [showPicker, setShowPicker] = React.useState(false)
+  const [isLoading, setIsLoading] = React.useState(false);
+
   const {
     control,
     handleSubmit,
@@ -47,9 +51,13 @@ const createActivity = () => {
 
   const onSubmit = async (data: any) => {
     try {
+      setIsLoading(true)
+      const actvityModel = new ActivityService();
+      const especificActivityModel = new EspecificActivityService();
+
       const id = nanoid();
       if (value.includes("Actividade")) {
-        const actvityModel = new ActivityService();
+
         const newActivity = {
           id: id,
           name: data.name,
@@ -59,9 +67,12 @@ const createActivity = () => {
         };
 
         const result = await actvityModel.addActivity(newActivity);
+        Alert.alert("Actividade", "Atividade criada com sucesso!");
+        router.back();
+        return;
       } else {
-        console.log("Criando uma nova receita ou despesas");
-        const especificActivityModel = new EspecificActivityService();
+        //console.log("Criando uma nova receita ou despesas");
+
         const newActivity = {
           id: id,
           idActivity: subtitulo,
@@ -71,21 +82,41 @@ const createActivity = () => {
           type: titulo.toLowerCase() === 'receitas' ? 'receitas' : 'despesas',
           createAt: new Date(),
         };
+        const correnteActivity = await actvityModel.getActivityById(subtitulo);
 
-        console.log("Id da actividade", subtitulo);
+        if (!correnteActivity) {
+          Alert.alert("Actividade", "Atividade principal não encontrada!");
+          return;
+        }
+
+        if (((newActivity.value > correnteActivity.value))) {
+          Alert.alert("Actividade", "O valor da atividade não pode ser maior que o valor da atividade principal!");
+          return;
+        }
+
+
         const result = await especificActivityModel.addEspecificActivity(newActivity);
-        Alert.alert("Actividade", "Atividade criada com sucesso!");
-        router.back();
-        return;
+        console.log("result: ", result);
+        if (result && result != undefined) {
+          Alert.alert("Actividade", "Atividade criada com sucesso!");
+          router.back();
+        }
       }
-
-      //console.log(data);
-      Alert.alert("Actividade", "Atividade criada com sucesso!");
-      router.back();
-
+      Keyboard.dismiss()
     } catch (error) {
+      console.log("Error ", error);
+
+      if (error instanceof AppError) {
+
+        Alert.alert("Novo Actividade", error.message)
+
+      } else {
+        Alert.alert("Novo Actividade", "Não foi Possível criar novo Actividade!")
+      }
       console.log(error);
-      Alert.alert("Actividade", "Não foi possível carregar as A")
+    }
+    finally {
+      setIsLoading(false)
     }
   }
 
@@ -101,97 +132,108 @@ const createActivity = () => {
 
 
 
+
   return (
     <Container>
-      <Header showBackButton />
-      <FileTextIcon color="#00875F" size={56} style={{ alignSelf: "center" }} />
-      <Highliht
-        title={`Nova ${titulo}` || "Nova Actividade"}
-        subTitle={`Adicionara ${titulo} para controlar os gastos` || "Cria uma actividade para controlar seus gastos"}
-      />
-
-      <Controller
-        control={control}
-        rules={{
-          required: "campo obrigatório",
-        }}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <Input className={`p-4  bg-[#121214] text-gray-700 rounded-2xl  ${errors.name ? ' text-gray-100 outline outline-red-500' : ''}`}
-            placeholder='Enter name'
-            onBlur={onBlur}
-            onChangeText={onChange}
-            value={value}
-            style={{ marginTop: 32, marginBottom: 16 }}
-          />
-        )}
-        name="name"
-      />
-      {errors.name && <Text className='text-red-500 text-small ml-2 mb-5'> {errors.name.message} </Text>}
-
-      <Controller
-        control={control}
-        rules={{
-          required: "campo obrigatório",
-        }}
-        render={({ field: { onChange, onBlur, value } }) => (
-          <Input className={`p-4  bg-[#121214] text-gray-700 rounded-2xl  ${errors.value ? ' text-gray-100 outline outline-red-500' : ''}`}
-            placeholder='Enter value'
-            keyboardType='numeric'
-            onBlur={onBlur}
-            onChangeText={onChange}
-            value={value}
-            style={{ marginTop: 32, marginBottom: 16 }}
-          />
-        )}
-        name="value"
-      />
-      {errors.value && <Text className='text-red-500 text-small ml-2 mb-5'> {errors.value.message} </Text>}
-
-      {/* DATE PICKER */}
-      <Controller
-        control={control}
-        name="dataActivity"
-        render={({ field: { value, onChange } }) => (
+      {
+        isLoading ?
+          <Loading /> :
           <>
-            <Pressable
-              onPress={() => {
-                Keyboard.dismiss();
-                setShowPicker(true);
-              }}
-              style={{
-                backgroundColor: '#121214',
-                borderWidth: 1,
-                borderColor: '#121214',
-                borderRadius: 6,
-                padding: 14,
-                marginBottom: 16,
-              }}
-            >
-              <Text style={{ color: '#FFFFFF', fontSize: 16, fontFamily: 'Roboto_400Regular' }}>
-                {value
-                  ? value.toLocaleDateString('pt-PT')
-                  : 'Selecionar data'}
-              </Text>
-            </Pressable>
+            <Header showBackButton />
+            <FileTextIcon color="#00875F" size={56} style={{ alignSelf: "center" }} />
+            <Highliht
+              title={`Nova ${titulo}` || "Nova Actividade"}
+              subTitle={`Adicionara ${titulo} para controlar os gastos` || "Cria uma actividade para controlar seus gastos"}
+            />
 
-            {showPicker && (
-              <DateTimePicker
-                value={value || new Date()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(_, selectedDate) => {
-                  setShowPicker(false);
-                  Keyboard.dismiss();
-                  if (selectedDate) {
-                    onChange(selectedDate);
-                  }
-                }}
-              />
-            )}
+            <Controller
+              control={control}
+              rules={{
+                required: "campo obrigatório",
+              }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input className={`p-4  bg-[#121214] text-gray-700 rounded-2xl  ${errors.name ? ' text-gray-100 outline outline-red-500' : ''}`}
+                  placeholder='Enter name'
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  style={{ marginTop: 32, marginBottom: 16 }}
+                />
+              )}
+              name="name"
+            />
+            {errors.name && <Text className='text-red-500 text-small ml-2 mb-5'> {errors.name.message} </Text>}
+
+            <Controller
+              control={control}
+              rules={{
+                required: "campo obrigatório",
+                pattern: {
+                  value: /^[0-9]+$/,
+                  message: 'Só é permitido números',
+                },
+              }}
+              render={({ field: { onChange, onBlur, value } }) => (
+                <Input className={`p-4  bg-[#121214] text-gray-700 rounded-2xl  ${errors.value ? ' text-gray-100 outline outline-red-500' : ''}`}
+                  placeholder='Enter value'
+                  keyboardType='numeric'
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  style={{ marginTop: 32, marginBottom: 16 }}
+                />
+              )}
+              name="value"
+            />
+            {errors.value && <Text className='text-red-500 text-small ml-2 mb-5'> {errors.value.message} </Text>}
+
+            {/* DATE PICKER */}
+            <Controller
+              control={control}
+              name="dataActivity"
+              render={({ field: { value, onChange } }) => (
+                <>
+                  <Pressable
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setShowPicker(true);
+                    }}
+                    style={{
+                      backgroundColor: '#121214',
+                      borderWidth: 1,
+                      borderColor: '#121214',
+                      borderRadius: 6,
+                      padding: 14,
+                      marginBottom: 16,
+                    }}
+                  >
+                    <Text style={{ color: '#FFFFFF', fontSize: 16, fontFamily: 'Roboto_400Regular' }}>
+                      {value
+                        ? value.toLocaleDateString('pt-PT')
+                        : 'Selecionar data'}
+                    </Text>
+                  </Pressable>
+
+                  {showPicker && (
+                    <DateTimePicker
+                      value={value || new Date()}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(_, selectedDate) => {
+                        setShowPicker(false);
+                        Keyboard.dismiss();
+                        if (selectedDate) {
+                          onChange(selectedDate);
+                        }
+                      }}
+                    />
+                  )}
+                </>
+              )}
+            />
+            <Button title="Adicionar Atividade" onPress={handleSubmit(onSubmit)} />
           </>
-        )}
-      />
-      <Button title="Adicionar Atividade" onPress={handleSubmit(onSubmit)} />
+      }
 
     </Container>
   );
