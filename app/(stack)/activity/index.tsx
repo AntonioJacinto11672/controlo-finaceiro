@@ -10,7 +10,7 @@ import Loading from '@/components/Loanding';
 import ActivityService from '@/storage/activity.service';
 import EspecificActivityService from '@/storage/especificactivity.service';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
-import { Link, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { ArrowRightIcon, EyeIcon, FileTextIcon } from 'phosphor-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, FlatList, Modal, PanResponder, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -276,7 +276,7 @@ const Activity = () => {
             <FlatList
               data={activities}
               keyExtractor={item => item.name}
-              renderItem={({ item }) => <IcomeExpenseCard name={item.name} value={item.value} onRemove={() => handleActivityRemove(item.id)}
+              renderItem={({ item }) => <IcomeExpenseCard name={item.name} value={item.value} type={item.type} onRemove={() => handleActivityRemove(item.id)}
               />}
               ListEmptyComponent={() => <ListEmpity message="Não há receitas nem despesas nessa actividade" />}
               showsVerticalScrollIndicator={false}
@@ -305,7 +305,9 @@ const Activity = () => {
             <Pressable onPress={() => { }} style={{ flex: 1 }}>
               <View className='flex-row items-center mb-6'>
                 <Text className='flex-1 text-white font-Roboto_400Regular text-sm pb-1'>Detalhes da Actividade</Text>
-                <Link href={"/"} className='text-sm text-blue-500 mr-3'>Ver mais</Link>
+                <Pressable onPress={() => { setModalVisible(false); router.push({ pathname: '/(stack)/activity/details', params: { id: nameActivity } }) }} className='text-sm mr-3'>
+                  <Text className='text-sm text-blue-500 mr-3'>Ver mais</Text>
+                </Pressable>
                 <ArrowRightIcon size={32} color="#00B37E" />
               </View>
 
