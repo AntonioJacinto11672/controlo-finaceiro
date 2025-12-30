@@ -112,7 +112,7 @@ const LoginScreen = () => {
           {/* Recuperar PIN */}
           <TouchableOpacity
             className="flex items-end mb-5"
-            onPress={() => {router.push('/(auth)/recover-pin/index')}}
+            onPress={() => {router.push('/(auth)/recover-pin')}}
           >
             <Text className="text-gray-400">Forgot PIN?</Text>
           </TouchableOpacity>
@@ -129,7 +129,7 @@ const LoginScreen = () => {
         </View>
 
         {/* Registo */}
-        <View className="flex-row justify-center mt-7">
+       {/*  <View className="flex-row justify-center mt-7">
           <TouchableOpacity
             onPress={() => router.push('/(auth)/register')}
           >
@@ -137,7 +137,7 @@ const LoginScreen = () => {
               Sign Up
             </Text>
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
     </View>
   );

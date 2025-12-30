@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Index() {
-  const { tokenLogeded } = useAuth();
+  const { tokenLogeded, isRegistered } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
 
   //console.log("TOken Storage", tokenLogeded)
@@ -23,6 +23,10 @@ export default function Index() {
     return (
       <Loading />
     );
+  }
+
+  if(!isRegistered){
+    return <Redirect href="/(auth)/register" />
   }
 
   if (tokenLogeded) {

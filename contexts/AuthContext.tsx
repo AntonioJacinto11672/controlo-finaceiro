@@ -2,7 +2,8 @@ import { AUTH_COLLECTION } from '@/storage/storageConfig';
 import { UserType } from '@/utils/userType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { AppState, AppStateStatus } from 'react-native';
 
 
 interface AuthContextType {
@@ -33,6 +34,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [tokenLogeded, setTokenLogeded] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
 
+  // Background timeout (auto logout if app is backgrounded for > 20s)
+  const backgroundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const INACTIVITY_MS = 20 * 1000; // 20 seconds
+  const LAST_ACTIVE_KEY = `${AUTH_COLLECTION}-lastActive`;
+
   // 🔄 Carregar dados ao iniciar app
   useEffect(() => {
     const loadAuthData = async () => {
@@ -43,6 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const storedToken = await AsyncStorage.getItem(
           `${AUTH_COLLECTION}-token`
         );
+        const lastActive = await AsyncStorage.getItem(LAST_ACTIVE_KEY);
 
         if (storedUser) {
           setUser(JSON.parse(storedUser));
@@ -50,7 +57,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (storedToken) {
-          setTokenLogeded(storedToken);
+          // if we have a last active timestamp, check if it expired while app was closed/killed
+          if (lastActive) {
+            const elapsed = Date.now() - Number(lastActive);
+            if (elapsed > INACTIVITY_MS) {
+              // expired while app was closed; remove token
+              await AsyncStorage.removeItem(`${AUTH_COLLECTION}-token`);
+              await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
+              setTokenLogeded('');
+            } else {
+              setTokenLogeded(storedToken);
+            }
+          } else {
+            setTokenLogeded(storedToken);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar autenticação:', error);
@@ -58,6 +78,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     loadAuthData();
+  }, []);
+
+  // Listen for AppState changes to detect when app goes to background
+  useEffect(() => {
+    const handleAppState = (nextState: AppStateStatus) => {
+      // when moving to background or inactive, store timestamp and start a timeout that expires the token
+      if (nextState !== 'active') {
+        AsyncStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString()).catch(() => {});
+
+        if (backgroundTimer.current) {
+          clearTimeout(backgroundTimer.current as any);
+          backgroundTimer.current = null;
+        }
+
+        backgroundTimer.current = setTimeout(async () => {
+          try {
+            await AsyncStorage.removeItem(`${AUTH_COLLECTION}-token`);
+            await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
+          } catch (e) {
+            // ignore
+          }
+
+          backgroundTimer.current = null;
+          setTokenLogeded('');
+        }, INACTIVITY_MS);
+      } else {
+        // app became active: clear timer, remove lastActive and ensure token still valid
+        if (backgroundTimer.current) {
+          clearTimeout(backgroundTimer.current as any);
+          backgroundTimer.current = null;
+        }
+        AsyncStorage.removeItem(LAST_ACTIVE_KEY).catch(() => {});
+
+        // if token was removed by timeout while in background, force navigation to login
+        AsyncStorage.getItem(`${AUTH_COLLECTION}-token`).then(storedToken => {
+          if (!storedToken) {
+            setTokenLogeded('');
+            router.replace('/(auth)/login');
+          }
+        }).catch(() => {});
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleAppState);
+
+    return () => sub.remove();
   }, []);
 
   // 📝 REGISTO ÚNICO (UMA VEZ POR DISPOSITIVO)
@@ -110,6 +176,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setTokenLogeded(token);
 
+      // clear any recorded last active time and cancel background timer
+      await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
+      if (backgroundTimer.current) {
+        clearTimeout(backgroundTimer.current as any);
+        backgroundTimer.current = null;
+      }
+
       router.replace('/(stack)/home');
       return true;
     } catch (error) {
@@ -133,6 +206,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 🚪 LOGOUT (não apaga registo)
   const logout = async () => {
     try {
+      // cancel background timer and remove lastActive marker
+      if (backgroundTimer.current) {
+        clearTimeout(backgroundTimer.current as any);
+        backgroundTimer.current = null;
+      }
+      await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
+
       await AsyncStorage.removeItem(
         `${AUTH_COLLECTION}-token`
       );
