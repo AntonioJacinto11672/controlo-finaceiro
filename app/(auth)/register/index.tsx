@@ -1,18 +1,17 @@
+import { useAuth } from '@/contexts/AuthContext';
+import { UserType } from '@/utils/userType';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   Alert,
   Image,
-  SafeAreaView,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { ArrowLeftIcon } from 'react-native-heroicons/solid';
-import { UserType } from '@/utils/userType';
-import { useAuth } from '@/contexts/AuthContext';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type RegisterFormData = {
   email: string;
@@ -65,12 +64,12 @@ const RegisterScreen = () => {
     <View className="flex-1 bg-[#202024]">
       <SafeAreaView className="flex">
         <View className="flex-row justify-start">
-          <TouchableOpacity
+          {/* <TouchableOpacity
             onPress={() => router.back()}
             className="bg-[#00665e] p-2 rounded-bl-2xl ml-4"
           >
             <ArrowLeftIcon size={20} color="black" />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         <View className="flex-row justify-center">
@@ -91,21 +90,30 @@ const RegisterScreen = () => {
           <Controller
             control={control}
             name="phoneNumber"
-            rules={{ required: 'campo obrigatório' }}
+            rules={{
+              required: 'campo obrigatório',
+              pattern: {
+                value: /^9\d{8}$/,
+                message: 'Número inválido. Ex: 912345678',
+              },
+            }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className={`p-4 bg-[#121214] rounded-2xl mb-4 text-gray-100 ${
-                  errors.phoneNumber ? 'outline outline-red-500' : ''
-                }`}
-                placeholder="Enter phone number"
+                className={`p-4 bg-[#121214] rounded-2xl mb-4 text-gray-100 ${errors.phoneNumber ? 'outline outline-red-500' : ''
+                  }`}
+                placeholder="912345678"
                 placeholderTextColor="#7C7C8A"
-                keyboardType="phone-pad"
+                keyboardType="numeric"
+                maxLength={9}
                 onBlur={onBlur}
-                onChangeText={onChange}
+                onChangeText={(text) =>
+                  onChange(text.replace(/[^0-9]/g, ''))
+                }
                 value={value}
               />
             )}
           />
+
           {errors.phoneNumber && (
             <Text className="text-red-500 ml-2">
               {errors.phoneNumber.message}
@@ -126,9 +134,8 @@ const RegisterScreen = () => {
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className={`p-4 bg-[#121214] rounded-2xl mb-4 text-gray-100 ${
-                  errors.email ? 'outline outline-red-500' : ''
-                }`}
+                className={`p-4 bg-[#121214] rounded-2xl mb-4 text-gray-100 ${errors.email ? 'outline outline-red-500' : ''
+                  }`}
                 placeholder="Enter email"
                 placeholderTextColor="#7C7C8A"
                 keyboardType="email-address"
@@ -160,9 +167,8 @@ const RegisterScreen = () => {
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className={`p-4 bg-[#121214] rounded-2xl mb-4 text-gray-100 ${
-                  errors.password ? 'outline outline-red-500' : ''
-                }`}
+                className={`p-4 bg-[#121214] rounded-2xl mb-4 text-gray-100 ${errors.password ? 'outline outline-red-500' : ''
+                  }`}
                 placeholder="PIN (6 dígitos)"
                 placeholderTextColor="#7C7C8A"
                 keyboardType="numeric"
