@@ -30,6 +30,10 @@ const Activity = () => {
   const [team, setTeam] = useState("Receitas")
   const [eyeOpen, setEyeOpen] = useState(false)
   const [activities, setActivities] = useState<EspecificActivityTypeDTO[]>([])
+  const [activitiesCal, setActivitiesCal] = useState<EspecificActivityTypeDTO[]>([])
+  const [receitasValue, setReceitasValue] = useState<number>(0)
+  const [despesasValue, setDespesasValue] = useState<number>(0)
+  const [diferRecDesValue, setdiferRecDesValue] = useState<number>(0)
   const [activity, setActivity] = useState<ActivityTypeDTO>()
   const { nameActivity } = route.params as RouteParams;
   const [modalVisible, setModalVisible] = useState(false)
@@ -91,9 +95,22 @@ const Activity = () => {
       setIsLoading(true);
       // Implement fetching activities logic here
       const activityService = new EspecificActivityService();
-      const activities = await activityService.getEspecificActivityById(nameActivity);
-      //console.log("Atividade comes", activities);
-      setActivities(activities || []);
+      const activitiesRes = await activityService.getEspecificActivityById(nameActivity);
+      //console.log("Atividade comes", activitiesRes);
+      setActivitiesCal(activitiesRes || []);
+
+      const totalReceitas = activitiesRes
+        .filter(item => item.type === 'receitas')
+        .reduce((sum, item) => sum + item.value, 0);
+      setReceitasValue(totalReceitas)
+      const totalDespesas = activitiesRes
+        .filter(item => item.type === 'despesas')
+        .reduce((sum, item) => sum + item.value, 0);
+      setDespesasValue(totalDespesas)
+
+      /* console.log("dados ", activitiesRes)
+      console.log("Receitas e despesas ", receitasValue, despesasValue); */
+
     } catch (error) {
       console.log(error);
     } finally {
@@ -195,9 +212,6 @@ const Activity = () => {
 
   useEffect(() => {
     //carregar atividades
-
-
-
     
     fetchCurrentActivity()
     fetchActivityType()
@@ -211,6 +225,7 @@ const Activity = () => {
   }, [modalVisible]);
 
   useFocusEffect(React.useCallback(() => {
+    fetchActivities()
     fetchCurrentActivity();
     fetchActivityType();
   }, [team, nameActivity]))
@@ -237,7 +252,7 @@ const Activity = () => {
                   eyeOpen ? <EyeIcon size={24} color="#00B37E" /> : <EyeSlashIcon size={24} color="#7C7C8A" />
                 }
               </TouchableOpacity>
-              <Text className='font-Roboto_700Bold text-white' >AKZ {eyeOpen ? 2000 : '***'},00</Text>
+              <Text className='font-Roboto_700Bold text-white' >AKZ {eyeOpen ? activity?.value : '***'},00</Text>
             </View>
             <TouchableOpacity className='flex-row gap-1 border border-[#095c4371] mt-2 p-2.5  rounded-md items-center justify-center  self-center '
               onPress={() => setModalVisible(true)}
@@ -256,7 +271,7 @@ const Activity = () => {
                 />}
                 horizontal
               />
-              <Text style={{ fontFamily: 'Roboto_700Bold', fontSize: 14, color: "#C4C4CC" }} >0</Text>
+              <Text style={{ fontFamily: 'Roboto_700Bold', fontSize: 14, color: "#C4C4CC" }} > {activities.length} </Text>
             </View>
             <FlatList
               data={activities}
@@ -294,12 +309,12 @@ const Activity = () => {
                 <ArrowRightIcon size={32} color="#00B37E" />
               </View>
 
-              <DetalheButtonAdd eyeOpen={eyeOpen} title="Receitas" value={2000} onPressAdd={() => { addNewActivity("Receitas") }} />
-              <DetalheButtonAdd eyeOpen={eyeOpen} title="Despesas" value={1000} onPressAdd={() => { addNewActivity("Despesas") }} />
+              <DetalheButtonAdd eyeOpen={eyeOpen} title="Receitas" value={receitasValue ? receitasValue : 0} onPressAdd={() => { addNewActivity("Receitas") }} />
+              <DetalheButtonAdd eyeOpen={eyeOpen} title="Despesas" value={despesasValue ? despesasValue : 0} onPressAdd={() => { addNewActivity("Despesas") }} />
 
               <Text className='text-white mt-4 font-Roboto_400Regular text-sm pb-1'>Saldo da Actividade</Text>
               <View className='bg-[#121214] h-[50] rounded-md items-center justify-center mt-2'>
-                <Text className='text-white font-Roboto_700Bold text-lg'>AKZ {eyeOpen ? 1000 : '***'},00</Text>
+                <Text className='text-white font-Roboto_700Bold text-lg'>AKZ {eyeOpen ?  receitasValue - despesasValue : '***'},00</Text>
               </View>
 
 
