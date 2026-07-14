@@ -1,239 +1,80 @@
-import { AUTH_COLLECTION } from '@/storage/storageConfig';
-import { UserType } from '@/utils/userType';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AuthService from '@/services/api/authService';
+import FuncionarioService from '@/services/api/funcionarioService';
+import { clearToken, getToken, saveToken } from '@/services/tokenStorage';
+import { Funcionario } from '@/types/funcionario';
 import { useRouter } from 'expo-router';
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { AppState, AppStateStatus } from 'react-native';
-
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 interface AuthContextType {
-  user: UserType;
-  tokenLogeded: string;
-  isRegistered: boolean;
-  register: (userData: UserType, pin: string) => Promise<void>;
-  loginWithPin: (pin: string) => Promise<boolean>;
-  recoverPin: (newPin: string) => Promise<void>;
+  funcionario: Funcionario | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  solicitarCodigo: (identificador: string) => Promise<void>;
+  verificarCodigo: (identificador: string, codigo: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const INITIAL_USER: UserType = {
-  id: '',
-  email: '',
-  userName: '',
-  phoneNumber: '',
-  roleId: '',
-  password: ''
-};
+const authService = new AuthService();
+const funcionarioService = new FuncionarioService();
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
-  const [user, setUser] = useState<UserType>(INITIAL_USER);
-  const [tokenLogeded, setTokenLogeded] = useState('');
-  const [isRegistered, setIsRegistered] = useState(false);
+  const [funcionario, setFuncionario] = useState<Funcionario | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Background timeout (auto logout if app is backgrounded for > 20s)
-  const backgroundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const INACTIVITY_MS = 20 * 1000; // 20 seconds
-  const LAST_ACTIVE_KEY = `${AUTH_COLLECTION}-lastActive`;
-
-  // 🔄 Carregar dados ao iniciar app
+  // 🔄 Ao arrancar: se houver token guardado, valida-o a carregar o perfil
   useEffect(() => {
-    const loadAuthData = async () => {
+    const loadSession = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem(
-          `${AUTH_COLLECTION}-user`
-        );
-        const storedToken = await AsyncStorage.getItem(
-          `${AUTH_COLLECTION}-token`
-        );
-        const lastActive = await AsyncStorage.getItem(LAST_ACTIVE_KEY);
-
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-          setIsRegistered(true);
-        }
-
-        if (storedToken) {
-          // if we have a last active timestamp, check if it expired while app was closed/killed
-          if (lastActive) {
-            const elapsed = Date.now() - Number(lastActive);
-            if (elapsed > INACTIVITY_MS) {
-              // expired while app was closed; remove token
-              await AsyncStorage.removeItem(`${AUTH_COLLECTION}-token`);
-              await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
-              setTokenLogeded('');
-            } else {
-              setTokenLogeded(storedToken);
-            }
-          } else {
-            setTokenLogeded(storedToken);
-          }
+        const token = await getToken();
+        if (token) {
+          const perfil = await funcionarioService.obterMeuPerfil();
+          setFuncionario(perfil);
         }
       } catch (error) {
-        console.error('Erro ao carregar autenticação:', error);
+        // token inválido/expirado
+        await clearToken();
+        setFuncionario(null);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadAuthData();
+    loadSession();
   }, []);
 
-  // Listen for AppState changes to detect when app goes to background
-  useEffect(() => {
-    const handleAppState = (nextState: AppStateStatus) => {
-      // when moving to background or inactive, store timestamp and start a timeout that expires the token
-      if (nextState !== 'active') {
-        AsyncStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString()).catch(() => {});
-
-        if (backgroundTimer.current) {
-          clearTimeout(backgroundTimer.current as any);
-          backgroundTimer.current = null;
-        }
-
-        backgroundTimer.current = setTimeout(async () => {
-          try {
-            await AsyncStorage.removeItem(`${AUTH_COLLECTION}-token`);
-            await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
-          } catch (e) {
-            // ignore
-          }
-
-          backgroundTimer.current = null;
-          setTokenLogeded('');
-        }, INACTIVITY_MS);
-      } else {
-        // app became active: clear timer, remove lastActive and ensure token still valid
-        if (backgroundTimer.current) {
-          clearTimeout(backgroundTimer.current as any);
-          backgroundTimer.current = null;
-        }
-        AsyncStorage.removeItem(LAST_ACTIVE_KEY).catch(() => {});
-
-        // if token was removed by timeout while in background, force navigation to login
-        AsyncStorage.getItem(`${AUTH_COLLECTION}-token`).then(storedToken => {
-          if (!storedToken) {
-            setTokenLogeded('');
-            router.replace('/(auth)/login');
-          }
-        }).catch(() => {});
-      }
-    };
-
-    const sub = AppState.addEventListener('change', handleAppState);
-
-    return () => sub.remove();
-  }, []);
-
-  // 📝 REGISTO ÚNICO (UMA VEZ POR DISPOSITIVO)
-  const register = async (userData: UserType, pin: string) => {
-    try {
-      const alreadyRegistered = await AsyncStorage.getItem(
-        `${AUTH_COLLECTION}-user`
-      );
-
-      if (alreadyRegistered) {
-        throw new Error('Já existe um utilizador registado neste dispositivo');
-      }
-
-      if (!/^[0-9]{6}$/.test(pin)) {
-        throw new Error('O PIN deve conter exatamente 6 dígitos');
-      }
-
-      await AsyncStorage.multiSet([
-        [`${AUTH_COLLECTION}-user`, JSON.stringify(userData)],
-        [`${AUTH_COLLECTION}-pin`, pin]
-      ]);
-
-      setUser(userData);
-      setIsRegistered(true);
-
-      router.replace('/(auth)/login');
-    } catch (error) {
-      console.error('Erro no registo:', error);
-      throw error;
-    }
+  // 📨 PASSO 1 — pede o envio do código de acesso por email
+  const solicitarCodigo = async (identificador: string) => {
+    await authService.solicitarCodigo(identificador);
   };
 
-  // 🔑 LOGIN APENAS COM PIN (6 DÍGITOS)
-  const loginWithPin = async (pin: string) => {
-    try {
-      const storedPin = await AsyncStorage.getItem(
-        `${AUTH_COLLECTION}-pin`
-      );
-
-      if (storedPin !== pin) {
-        return false;
-      }
-
-      const token = Date.now().toString();
-
-      await AsyncStorage.setItem(
-        `${AUTH_COLLECTION}-token`,
-        token
-      );
-
-      setTokenLogeded(token);
-
-      // clear any recorded last active time and cancel background timer
-      await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
-      if (backgroundTimer.current) {
-        clearTimeout(backgroundTimer.current as any);
-        backgroundTimer.current = null;
-      }
-
-      router.replace('/(stack)/home');
-      return true;
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return false;
-    }
+  // 🔑 PASSO 2 — valida o código e inicia sessão
+  const verificarCodigo = async (identificador: string, codigo: string) => {
+    const { access_token, funcionario: perfil } = await authService.verificarCodigo(identificador, codigo);
+    await saveToken(access_token);
+    setFuncionario(perfil);
+    router.replace('/(tabs)');
   };
 
-  // 🔄 RECUPERAÇÃO DE PIN
-  const recoverPin = async (newPin: string) => {
-    if (!/^[0-9]{6}$/.test(newPin)) {
-      throw new Error('O novo PIN deve conter exatamente 6 dígitos');
-    }
-
-    await AsyncStorage.setItem(
-      `${AUTH_COLLECTION}-pin`,
-      newPin
-    );
-  };
-
-  // 🚪 LOGOUT (não apaga registo)
+  // 🚪 LOGOUT
   const logout = async () => {
-    try {
-      // cancel background timer and remove lastActive marker
-      if (backgroundTimer.current) {
-        clearTimeout(backgroundTimer.current as any);
-        backgroundTimer.current = null;
-      }
-      await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
-
-      await AsyncStorage.removeItem(
-        `${AUTH_COLLECTION}-token`
-      );
-
-      setTokenLogeded('');
-      router.replace('/(auth)/login');
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-    }
+    await clearToken();
+    setFuncionario(null);
+    router.replace('/(auth)/login');
   };
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        tokenLogeded,
-        isRegistered,
-        register,
-        loginWithPin,
-        recoverPin,
-        logout
+        funcionario,
+        isLoading,
+        isAuthenticated: !!funcionario,
+        solicitarCodigo,
+        verificarCodigo,
+        logout,
       }}
     >
       {children}

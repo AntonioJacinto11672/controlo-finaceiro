@@ -5,6 +5,7 @@ export default {
         GEREEN_500: '#00B37E',
         RED: '#F75A68',
         RED_DARK: '#AA2834',
+        AMBER: '#F5A623',
         GRAY_700: '#121214',
         GRAY_600: '#202024',
         GRAY_500: '#29292E',
