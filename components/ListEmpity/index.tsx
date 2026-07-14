@@ -8,7 +8,7 @@ type ListEmpityProps = {
 const ListEmpity = ({ message }: ListEmpityProps) => {
   return (
     <View className='flex-1 justify-center items-center'>
-      <Text className='text-center text-base text-gray-500' style={{fontFamily: "Roboto_400Regular"}}>{message}</Text>
+      <Text className='text-center text-base text-[#f7931e]/60' style={{fontFamily: "Roboto_400Regular"}}>{message}</Text>
     </View>
   );
 }

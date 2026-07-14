@@ -9,8 +9,8 @@ interface ButtonProps {
 }
 const Button = ({ title, type = 'PRIMARY', onPress }: ButtonProps) => {
     return (
-        <TouchableOpacity className={`flex-1 min-h-16 max-h-16 py-5  rounded-md ${type === 'PRIMARY' ? 'bg-[#5f0221]' : 'bg-[#AA2834]'} `} onPress={onPress}>
-            <Text className='font-xl font-bold text-center text-[#f7931e] '> {title} </Text>
+        <TouchableOpacity className={`flex-1 min-h-16 max-h-16 py-5  rounded-md ${type === 'PRIMARY' ? 'bg-[#f7931e]' : 'bg-[#AA2834]'} `} onPress={onPress}>
+            <Text className='font-xl font-bold text-center text-[#5f0221] '> {title} </Text>
         </TouchableOpacity>
     );
 } 

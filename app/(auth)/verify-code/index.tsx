@@ -61,8 +61,8 @@ const VerifyCodeScreen = () => {
       <SafeAreaView className="flex">
         <View className="flex-row justify-center">
           <Image
-            source={require('@/assets/images/logo/logo.png')}
-            style={{ height: 150, width: 200 }}
+            source={require('@/assets/images/logotipos/6.png')}
+            style={{ height: 150, width: 200,  }}
           />
         </View>
       </SafeAreaView>

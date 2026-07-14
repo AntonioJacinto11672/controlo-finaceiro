@@ -57,10 +57,10 @@ const HomeScreen = () => {
       <Highliht title={`Olá, ${funcionario?.nome_completo?.split(' ')[0] ?? ''}`} subTitle="Bem-vindo(a) ao TCL RH" />
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        <View className="bg-[#29292E] rounded-md p-4 mb-4">
-          <Text className="text-gray-400 mb-1">Nº de agente</Text>
+        <View className="bg-[#f7931e] rounded-md p-4 mb-4">
+          <Text className="text-[#5f0221] mb-1">Nº de agente</Text>
           <Text className="text-gray-100 font-bold mb-3">{funcionario?.numero_agente}</Text>
-          <Text className="text-gray-400 mb-1">Estado</Text>
+          <Text className="text-[#] mb-1">Estado</Text>
           <Text className="text-gray-100 font-bold">
             {ESTADO_LABEL[funcionario?.estado ?? ''] ?? funcionario?.estado}
           </Text>

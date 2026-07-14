@@ -7,7 +7,7 @@ interface ContainerProps {
 
 const Container: React.FC<ContainerProps> = ({ children }) => {
     return (
-        <SafeAreaView className={`flex-1 bg-[#202024] p-6`}>
+        <SafeAreaView className={`flex-1 bg-[#380013] p-6`}>
             {children}
         </SafeAreaView>
     );

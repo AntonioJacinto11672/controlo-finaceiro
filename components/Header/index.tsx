@@ -21,7 +21,7 @@ const Header = ({ showBackButton = false }: props) => {
             }
 
             <Image
-                source={require("@/assets/images/logo/logo.png")}
+                source={require("@/assets/images/logotipos/6.png")}
 
                 style={{ height: 55, width: 46 }}
             />

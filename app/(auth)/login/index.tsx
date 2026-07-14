@@ -43,27 +43,29 @@ const LoginScreen = () => {
   };
 
   return (
-    <View className="flex-1 bg-[#202024]">
+    <View className="flex-1 bg-[#380013]">
       <SafeAreaView className="flex">
         <View className="flex-row justify-center">
           <Image
-            source={require('@/assets/images/logotipos/6.png')}
-            style={{ height: 150, width: 200 }}
+            source={require('@/assets/images/logotipos/9.png')}
+            style={{
+              width: 250,
+              height: 100,
+            }}
+            resizeMode="contain"
           />
         </View>
       </SafeAreaView>
 
       <View
-        className="flex-1 bg-[#29292E] px-8 pt-8"
+        className="flex-1 bg-[#5f0221] px-8 pt-8"
         style={{
           borderTopLeftRadius: 50,
           borderTopRightRadius: 50,
         }}
       >
-        <Text className="text-[#AA2834] text-lg font-semibold text-center mb-2">
-          TCL RH
-        </Text>
-        <Text className="text-gray-400 text-center mb-6">
+        
+        <Text className="text-[#f7931e] text-center mb-6">
           Introduza o seu número de agente ou email para receber um código de acesso
         </Text>
 
