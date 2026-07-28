@@ -3,13 +3,11 @@ import React from 'react';
 
 export default function AuthLayout() {
     return (
-
         <Stack screenOptions={{
             headerShown: false
         }}>
-            <Stack.Screen name='login/index' options={{ headerShown: false, title: "login" }} />
-            <Stack.Screen name='register/index' options={{ headerShown: false, title: "Register" }} />
-            <Stack.Screen name='recover-pin/index' options={{ headerShown: false, title: "Recuperar Pin" }} />
+            <Stack.Screen name='login/index' options={{ headerShown: false, title: "Login" }} />
+            <Stack.Screen name='verify-code/index' options={{ headerShown: false, title: "Verificar código" }} />
         </Stack>
     );
 }

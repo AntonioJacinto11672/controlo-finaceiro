@@ -19,6 +19,7 @@ expo-env.d.ts
 *.mobileprovision
 
 # local env files
+.env
 .env*.local
 
 # Metro

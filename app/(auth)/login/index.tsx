@@ -1,8 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Text,
@@ -13,37 +14,35 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type LoginFormData = {
-  password: string; // PIN 6 dígitos
+  numero_agente: string;
+  email: string;
 };
 
 const LoginScreen = () => {
   const router = useRouter();
-  const { loginWithPin, isRegistered } = useAuth();
+  const { solicitarCodigo } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormData>({
-    defaultValues: {
-      password: '',
-    },
+    defaultValues: { numero_agente: '', email: '' },
   });
 
   const onSubmit = async (data: LoginFormData) => {
-    if (!isRegistered) {
-      Alert.alert(
-        'Dispositivo não registado',
-        'Por favor, faça o registo primeiro.'
-      );
-      router.replace('/(auth)/register');
-      return;
-    }
-
-    const success = await loginWithPin(data.password);
-
-    if (!success) {
-      Alert.alert('Erro', 'PIN incorreto. Tente novamente.');
+    try {
+      setIsSubmitting(true);
+      await solicitarCodigo(data.numero_agente.trim(), data.email.trim());
+      router.push({
+        pathname: '/(auth)/verify-code',
+        params: { numero_agente: data.numero_agente.trim(), email: data.email.trim() },
+      });
+    } catch (error: any) {
+      Alert.alert('Erro', error?.message || 'Não foi possível enviar o código de acesso.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -65,79 +64,75 @@ const LoginScreen = () => {
           borderTopRightRadius: 50,
         }}
       >
+        <Text className="text-gray-100 text-lg font-semibold text-center mb-6">
+          Acesso RH
+        </Text>
+
         <View className="space-y-2">
-          {/* PIN */}
+          {/* Número de agente */}
           <Controller
             control={control}
-            name="password"
-            rules={{
-              required: 'Campo obrigatório',
-              minLength: {
-                value: 6,
-                message: 'PIN deve conter 6 dígitos',
-              },
-              maxLength: {
-                value: 6,
-                message: 'PIN deve conter 6 dígitos',
-              },
-              pattern: {
-                value: /^[0-9]{6}$/,
-                message: 'Apenas números (6 dígitos)',
-              },
-            }}
+            name="numero_agente"
+            rules={{ required: 'Campo obrigatório' }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                className={`p-4 bg-[#121214] rounded-2xl text-gray-100 ${
-                  errors.password ? 'outline outline-red-500' : ''
+                className={`p-4 bg-[#121214] rounded-2xl text-gray-100 mb-1 ${
+                  errors.numero_agente ? 'outline outline-red-500' : ''
                 }`}
-                placeholder="PIN (6 dígitos)"
+                placeholder="Número de agente"
                 placeholderTextColor="#7C7C8A"
-                keyboardType="numeric"
-                secureTextEntry
-                maxLength={6}
+                autoCapitalize="none"
                 onBlur={onBlur}
-                onChangeText={(text) =>
-                  onChange(text.replace(/[^0-9]/g, ''))
-                }
+                onChangeText={onChange}
                 value={value}
               />
             )}
           />
-          {errors.password && (
-            <Text className="text-red-500 ml-2">
-              {errors.password.message}
-            </Text>
+          {errors.numero_agente && (
+            <Text className="text-red-500 ml-2 mb-2">{errors.numero_agente.message}</Text>
           )}
 
-          {/* Recuperar PIN */}
-          <TouchableOpacity
-            className="flex items-end mb-5"
-            onPress={() => {router.push('/(auth)/recover-pin')}}
-          >
-            <Text className="text-gray-400">Forgot PIN?</Text>
-          </TouchableOpacity>
+          {/* Email */}
+          <Controller
+            control={control}
+            name="email"
+            rules={{
+              required: 'Campo obrigatório',
+              pattern: { value: /^\S+@\S+\.\S+$/, message: 'Email inválido' },
+            }}
+            render={({ field: { onChange, onBlur, value } }) => (
+              <TextInput
+                className={`p-4 bg-[#121214] rounded-2xl text-gray-100 mb-1 ${
+                  errors.email ? 'outline outline-red-500' : ''
+                }`}
+                placeholder="Email"
+                placeholderTextColor="#7C7C8A"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+              />
+            )}
+          />
+          {errors.email && <Text className="text-red-500 ml-2">{errors.email.message}</Text>}
 
-          {/* Login */}
           <TouchableOpacity
-            className="py-3 bg-[#00665e] rounded-xl"
+            className="py-3 mt-6 bg-[#00665e] rounded-xl flex-row justify-center items-center"
             onPress={handleSubmit(onSubmit)}
+            disabled={isSubmitting}
           >
-            <Text className="font-bold text-center text-white">
-              Login
-            </Text>
+            {isSubmitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="font-bold text-center text-white">Enviar código de acesso</Text>
+            )}
           </TouchableOpacity>
-        </View>
 
-        {/* Registo */}
-       {/*  <View className="flex-row justify-center mt-7">
-          <TouchableOpacity
-            onPress={() => router.push('/(auth)/register')}
-          >
-            <Text className="font-semibold text-[#00665e]">
-              Sign Up
-            </Text>
-          </TouchableOpacity>
-        </View> */}
+          <Text className="text-gray-500 text-center mt-4 text-xs">
+            Vais receber um código de 6 dígitos por email para confirmar o acesso.
+          </Text>
+        </View>
       </View>
     </View>
   );

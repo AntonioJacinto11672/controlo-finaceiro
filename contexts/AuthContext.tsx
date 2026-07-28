@@ -1,240 +1,141 @@
+import { authService } from '@/services/auth.service';
+import { clearToken, getToken, setToken } from '@/services/api';
+import { Funcionario } from '@/services/types';
 import { AUTH_COLLECTION } from '@/storage/storageConfig';
-import { UserType } from '@/utils/userType';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 
-
 interface AuthContextType {
-  user: UserType;
-  tokenLogeded: string;
-  isRegistered: boolean;
-  register: (userData: UserType, pin: string) => Promise<void>;
-  loginWithPin: (pin: string) => Promise<boolean>;
-  recoverPin: (newPin: string) => Promise<void>;
+  funcionario: Funcionario | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  solicitarCodigo: (numero_agente: string, email: string) => Promise<string>;
+  verificarCodigo: (numero_agente: string, email: string, codigo: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const INITIAL_USER: UserType = {
-  id: '',
-  email: '',
-  userName: '',
-  phoneNumber: '',
-  roleId: '',
-  password: ''
-};
+const FUNCIONARIO_KEY = `${AUTH_COLLECTION}-funcionario`;
+const LAST_ACTIVE_KEY = `${AUTH_COLLECTION}-lastActive`;
+const INACTIVITY_MS = 5 * 60 * 1000; // 5 minutos em segundo plano
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
-  const [user, setUser] = useState<UserType>(INITIAL_USER);
-  const [tokenLogeded, setTokenLogeded] = useState('');
-  const [isRegistered, setIsRegistered] = useState(false);
+  const [funcionario, setFuncionario] = useState<Funcionario | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Background timeout (auto logout if app is backgrounded for > 20s)
   const backgroundTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const INACTIVITY_MS = 20 * 1000; // 20 seconds
-  const LAST_ACTIVE_KEY = `${AUTH_COLLECTION}-lastActive`;
 
-  // 🔄 Carregar dados ao iniciar app
+  // Carrega sessão persistida ao iniciar a app
   useEffect(() => {
     const loadAuthData = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem(
-          `${AUTH_COLLECTION}-user`
-        );
-        const storedToken = await AsyncStorage.getItem(
-          `${AUTH_COLLECTION}-token`
-        );
-        const lastActive = await AsyncStorage.getItem(LAST_ACTIVE_KEY);
+        const [token, storedFuncionario, lastActive] = await Promise.all([
+          getToken(),
+          AsyncStorage.getItem(FUNCIONARIO_KEY),
+          AsyncStorage.getItem(LAST_ACTIVE_KEY),
+        ]);
 
-        if (storedUser) {
-          setUser(JSON.parse(storedUser));
-          setIsRegistered(true);
+        if (!token || !storedFuncionario) {
+          setIsLoading(false);
+          return;
         }
 
-        if (storedToken) {
-          // if we have a last active timestamp, check if it expired while app was closed/killed
-          if (lastActive) {
-            const elapsed = Date.now() - Number(lastActive);
-            if (elapsed > INACTIVITY_MS) {
-              // expired while app was closed; remove token
-              await AsyncStorage.removeItem(`${AUTH_COLLECTION}-token`);
-              await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
-              setTokenLogeded('');
-            } else {
-              setTokenLogeded(storedToken);
-            }
-          } else {
-            setTokenLogeded(storedToken);
+        if (lastActive) {
+          const elapsed = Date.now() - Number(lastActive);
+          if (elapsed > INACTIVITY_MS) {
+            await clearSession();
+            setIsLoading(false);
+            return;
           }
         }
+
+        setFuncionario(JSON.parse(storedFuncionario));
+        setIsAuthenticated(true);
       } catch (error) {
         console.error('Erro ao carregar autenticação:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadAuthData();
   }, []);
 
-  // Listen for AppState changes to detect when app goes to background
+  // Bloqueio automático: se a app ficar em segundo plano mais de INACTIVITY_MS, força novo login
   useEffect(() => {
     const handleAppState = (nextState: AppStateStatus) => {
-      // when moving to background or inactive, store timestamp and start a timeout that expires the token
       if (nextState !== 'active') {
         AsyncStorage.setItem(LAST_ACTIVE_KEY, Date.now().toString()).catch(() => {});
 
-        if (backgroundTimer.current) {
-          clearTimeout(backgroundTimer.current as any);
-          backgroundTimer.current = null;
-        }
-
+        if (backgroundTimer.current) clearTimeout(backgroundTimer.current);
         backgroundTimer.current = setTimeout(async () => {
-          try {
-            await AsyncStorage.removeItem(`${AUTH_COLLECTION}-token`);
-            await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
-          } catch (e) {
-            // ignore
-          }
-
           backgroundTimer.current = null;
-          setTokenLogeded('');
+          await clearSession();
+          setIsAuthenticated(false);
+          setFuncionario(null);
         }, INACTIVITY_MS);
       } else {
-        // app became active: clear timer, remove lastActive and ensure token still valid
         if (backgroundTimer.current) {
-          clearTimeout(backgroundTimer.current as any);
+          clearTimeout(backgroundTimer.current);
           backgroundTimer.current = null;
         }
         AsyncStorage.removeItem(LAST_ACTIVE_KEY).catch(() => {});
 
-        // if token was removed by timeout while in background, force navigation to login
-        AsyncStorage.getItem(`${AUTH_COLLECTION}-token`).then(storedToken => {
-          if (!storedToken) {
-            setTokenLogeded('');
+        getToken().then((token) => {
+          if (!token) {
+            setIsAuthenticated(false);
+            setFuncionario(null);
             router.replace('/(auth)/login');
           }
-        }).catch(() => {});
+        });
       }
     };
 
     const sub = AppState.addEventListener('change', handleAppState);
-
     return () => sub.remove();
-  }, []);
+  }, [router]);
 
-  // 📝 REGISTO ÚNICO (UMA VEZ POR DISPOSITIVO)
-  const register = async (userData: UserType, pin: string) => {
-    try {
-      const alreadyRegistered = await AsyncStorage.getItem(
-        `${AUTH_COLLECTION}-user`
-      );
+  async function clearSession() {
+    await clearToken();
+    await AsyncStorage.multiRemove([FUNCIONARIO_KEY, LAST_ACTIVE_KEY]);
+  }
 
-      if (alreadyRegistered) {
-        throw new Error('Já existe um utilizador registado neste dispositivo');
-      }
+  async function solicitarCodigo(numero_agente: string, email: string): Promise<string> {
+    const { message } = await authService.solicitarCodigo(numero_agente, email);
+    return message;
+  }
 
-      if (!/^[0-9]{6}$/.test(pin)) {
-        throw new Error('O PIN deve conter exatamente 6 dígitos');
-      }
+  async function verificarCodigo(numero_agente: string, email: string, codigo: string): Promise<void> {
+    const { access_token, funcionario: dados } = await authService.verificarCodigo(numero_agente, email, codigo);
 
-      await AsyncStorage.multiSet([
-        [`${AUTH_COLLECTION}-user`, JSON.stringify(userData)],
-        [`${AUTH_COLLECTION}-pin`, pin]
-      ]);
+    await setToken(access_token);
+    await AsyncStorage.setItem(FUNCIONARIO_KEY, JSON.stringify(dados));
 
-      setUser(userData);
-      setIsRegistered(true);
+    setFuncionario(dados);
+    setIsAuthenticated(true);
+    router.replace('/(stack)/pedidos');
+  }
 
-      router.replace('/(auth)/login');
-    } catch (error) {
-      console.error('Erro no registo:', error);
-      throw error;
+  async function logout(): Promise<void> {
+    if (backgroundTimer.current) {
+      clearTimeout(backgroundTimer.current);
+      backgroundTimer.current = null;
     }
-  };
-
-  // 🔑 LOGIN APENAS COM PIN (6 DÍGITOS)
-  const loginWithPin = async (pin: string) => {
-    try {
-      const storedPin = await AsyncStorage.getItem(
-        `${AUTH_COLLECTION}-pin`
-      );
-
-      if (storedPin !== pin) {
-        return false;
-      }
-
-      const token = Date.now().toString();
-
-      await AsyncStorage.setItem(
-        `${AUTH_COLLECTION}-token`,
-        token
-      );
-
-      setTokenLogeded(token);
-
-      // clear any recorded last active time and cancel background timer
-      await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
-      if (backgroundTimer.current) {
-        clearTimeout(backgroundTimer.current as any);
-        backgroundTimer.current = null;
-      }
-
-      router.replace('/(stack)/home');
-      return true;
-    } catch (error) {
-      console.error('Erro no login:', error);
-      return false;
-    }
-  };
-
-  // 🔄 RECUPERAÇÃO DE PIN
-  const recoverPin = async (newPin: string) => {
-    if (!/^[0-9]{6}$/.test(newPin)) {
-      throw new Error('O novo PIN deve conter exatamente 6 dígitos');
-    }
-
-    await AsyncStorage.setItem(
-      `${AUTH_COLLECTION}-pin`,
-      newPin
-    );
-  };
-
-  // 🚪 LOGOUT (não apaga registo)
-  const logout = async () => {
-    try {
-      // cancel background timer and remove lastActive marker
-      if (backgroundTimer.current) {
-        clearTimeout(backgroundTimer.current as any);
-        backgroundTimer.current = null;
-      }
-      await AsyncStorage.removeItem(LAST_ACTIVE_KEY);
-
-      await AsyncStorage.removeItem(
-        `${AUTH_COLLECTION}-token`
-      );
-
-      setTokenLogeded('');
-      router.replace('/(auth)/login');
-    } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-    }
-  };
+    await clearSession();
+    setFuncionario(null);
+    setIsAuthenticated(false);
+    router.replace('/(auth)/login');
+  }
 
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        tokenLogeded,
-        isRegistered,
-        register,
-        loginWithPin,
-        recoverPin,
-        logout
-      }}
+      value={{ funcionario, isAuthenticated, isLoading, solicitarCodigo, verificarCodigo, logout }}
     >
       {children}
     </AuthContext.Provider>

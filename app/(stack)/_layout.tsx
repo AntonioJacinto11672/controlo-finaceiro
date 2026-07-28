@@ -1,15 +1,40 @@
-import { Stack } from 'expo-router';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Tabs } from 'expo-router';
 import React from 'react';
 
-export default function AuthLayout() {
+export default function StackLayout() {
     return (
-        
-        <Stack screenOptions={{
-            headerShown: false
-        }}>
-            <Stack.Screen name='home/index' options={{ headerShown: false, title: "Home" }} />
-            <Stack.Screen name='newActivity/index' options={{ headerShown: false, title: "Nova Actividade" }} />
-            <Stack.Screen name='activity/index' options={{ headerShown: false, title: "Actividades" }} />
-        </Stack>
+        <Tabs
+            screenOptions={{
+                headerShown: false,
+                tabBarActiveTintColor: '#00875F',
+                tabBarInactiveTintColor: '#7C7C8A',
+                tabBarStyle: { backgroundColor: '#202024', borderTopColor: '#29292E' },
+            }}
+        >
+            <Tabs.Screen
+                name="pedidos"
+                options={{
+                    title: 'Pedidos',
+                    tabBarIcon: ({ color, size }) => <MaterialIcons name="assignment" size={size} color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="assiduidade"
+                options={{
+                    title: 'Assiduidade',
+                    tabBarIcon: ({ color, size }) => (
+                        <MaterialIcons name="event-available" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tabs.Screen
+                name="perfil"
+                options={{
+                    title: 'Perfil',
+                    tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
+                }}
+            />
+        </Tabs>
     );
 }
