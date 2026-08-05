@@ -2,7 +2,14 @@ import { AppError } from '@/utils/AppError';
 import * as SecureStore from 'expo-secure-store';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = API_URL.replace(/\/api\/?$/, '');
 const TOKEN_KEY = 'tcl-rh-access-token';
+
+export function resolveUploadUrl(path?: string | null) {
+  if (!path) return undefined;
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  return `${API_BASE_URL.replace(/\/$/, '')}/${path.replace(/^\/+/, '')}`;
+}
 
 export async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync(TOKEN_KEY);
@@ -64,6 +71,10 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      await clearToken();
+      throw new AppError('Sessão expirada. Por favor, faça login novamente.');
+    }
     throw new AppError(await extractErrorMessage(response));
   }
 

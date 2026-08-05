@@ -60,6 +60,25 @@ export type Licenca = {
   motivo: string | null;
   observacoes: string | null;
   tipoLicenca?: TipoLicenca;
+  funcionario?: Funcionario;
+  aprovadoPor?: { id: string; email?: string | null; name?: string };
+  id_documento_emitido?: string | null;
+  documentoEmitido?: {
+    id: string;
+    numero_referencia: string;
+    tipo_documento: string;
+    nome_funcionario: string;
+    cargo: string;
+    departamento: string;
+    salario_base: number | null;
+    data_emissao: string;
+    nome_secretaria: string;
+    emitido_por: string;
+    endereco_tribunal: string;
+    conteudo_json: string | null;
+    status: string;
+    observacoes: string | null;
+  };
   created_at: string;
 };
 

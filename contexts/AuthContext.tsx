@@ -1,5 +1,6 @@
 import { authService } from '@/services/auth.service';
 import { clearToken, getToken, setToken } from '@/services/api';
+import { funcionarioService } from '@/services/funcionario.service';
 import { Funcionario } from '@/services/types';
 import { AUTH_COLLECTION } from '@/storage/storageConfig';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -55,8 +56,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        setFuncionario(JSON.parse(storedFuncionario));
-        setIsAuthenticated(true);
+        try {
+          const validFuncionario = await funcionarioService.me();
+          setFuncionario(validFuncionario);
+          setIsAuthenticated(true);
+        } catch (error: any) {
+          const offlineError = error?.message?.toLowerCase().includes('não foi possível ligar ao servidor');
+          if (offlineError) {
+            setFuncionario(JSON.parse(storedFuncionario));
+            setIsAuthenticated(true);
+          } else {
+            await clearSession();
+          }
+        }
       } catch (error) {
         console.error('Erro ao carregar autenticação:', error);
       } finally {
