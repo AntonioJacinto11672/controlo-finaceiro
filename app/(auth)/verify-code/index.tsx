@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const CODE_VALIDITY_SECONDS = 10 * 60;
+const CODE_VALIDITY_SECONDS = 5 * 60;
 
 const VerifyCodeScreen = () => {
   const router = useRouter();

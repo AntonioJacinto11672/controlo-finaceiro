@@ -22,6 +22,7 @@ const LoginScreen = () => {
   const router = useRouter();
   const { solicitarCodigo } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
 
   const {
     control,
@@ -34,13 +35,16 @@ const LoginScreen = () => {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setIsSubmitting(true);
+      setApiError('');
       await solicitarCodigo(data.numero_agente.trim(), data.email.trim());
       router.push({
         pathname: '/(auth)/verify-code',
         params: { numero_agente: data.numero_agente.trim(), email: data.email.trim() },
       });
     } catch (error: any) {
-      Alert.alert('Erro', error?.message || 'Não foi possível enviar o código de acesso.');
+      const message = error?.message || 'Nao foi possivel enviar o codigo de acesso.';
+      setApiError(message);
+      Alert.alert('Erro', message);
     } finally {
       setIsSubmitting(false);
     }
@@ -69,21 +73,23 @@ const LoginScreen = () => {
         </Text>
 
         <View className="space-y-2">
-          {/* Número de agente */}
           <Controller
             control={control}
             name="numero_agente"
-            rules={{ required: 'Campo obrigatório' }}
+            rules={{ required: 'Campo obrigatorio' }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
                 className={`p-4 bg-[#121214] rounded-2xl text-gray-100 mb-1 ${
                   errors.numero_agente ? 'outline outline-red-500' : ''
                 }`}
-                placeholder="Número de agente"
+                placeholder="Numero de agente"
                 placeholderTextColor="#7C7C8A"
                 autoCapitalize="none"
                 onBlur={onBlur}
-                onChangeText={onChange}
+                onChangeText={(text) => {
+                  setApiError('');
+                  onChange(text);
+                }}
                 value={value}
               />
             )}
@@ -92,13 +98,12 @@ const LoginScreen = () => {
             <Text className="text-red-500 ml-2 mb-2">{errors.numero_agente.message}</Text>
           )}
 
-          {/* Email */}
           <Controller
             control={control}
             name="email"
             rules={{
-              required: 'Campo obrigatório',
-              pattern: { value: /^\S+@\S+\.\S+$/, message: 'Email inválido' },
+              required: 'Campo obrigatorio',
+              pattern: { value: /^\S+@\S+\.\S+$/, message: 'Email invalido' },
             }}
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
@@ -110,12 +115,19 @@ const LoginScreen = () => {
                 autoCapitalize="none"
                 keyboardType="email-address"
                 onBlur={onBlur}
-                onChangeText={onChange}
+                onChangeText={(text) => {
+                  setApiError('');
+                  onChange(text);
+                }}
                 value={value}
               />
             )}
           />
           {errors.email && <Text className="text-red-500 ml-2">{errors.email.message}</Text>}
+
+          {apiError ? (
+            <Text className="text-red-400 text-center mt-3">{apiError}</Text>
+          ) : null}
 
           <TouchableOpacity
             className="py-3 mt-6 bg-[#00665e] rounded-xl flex-row justify-center items-center"
@@ -125,12 +137,12 @@ const LoginScreen = () => {
             {isSubmitting ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text className="font-bold text-center text-white">Enviar código de acesso</Text>
+              <Text className="font-bold text-center text-white">Enviar codigo de acesso</Text>
             )}
           </TouchableOpacity>
 
           <Text className="text-gray-500 text-center mt-4 text-xs">
-            Vais receber um código de 6 dígitos por email para confirmar o acesso.
+            Vais receber um codigo de 6 digitos por email para confirmar o acesso.
           </Text>
         </View>
       </View>
