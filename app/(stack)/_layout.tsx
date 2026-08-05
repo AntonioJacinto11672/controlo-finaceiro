@@ -29,9 +29,10 @@ export default function StackLayout() {
                 }}
             />
             <Tabs.Screen
-                name="perfil"
+                name="perfil/index"
                 options={{
                     title: 'Perfil',
+                    tabBarLabel: 'Perfil',
                     tabBarIcon: ({ color, size }) => <MaterialIcons name="person" size={size} color={color} />,
                 }}
             />
